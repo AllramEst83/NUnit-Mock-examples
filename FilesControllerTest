@@ -1,0 +1,83 @@
+using AutoFixture;
+using fileuploader_api.Exceptions;
+using fileuploader_api.Models;
+using fileuploader_api.Models.Enums;
+using fileuploaderTest.Helpers;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using NUnit.Framework;
+using System;
+using System.Threading.Tasks;
+
+namespace fileuploaderTest.Controllers
+{
+    //Test guidlines -> Assume,  Act,  Assert.   
+    [TestFixture()]
+    public class FilesControllerTest : FilesControllerTestHelper
+    {
+
+        [SetUp]
+        public void SetUp()
+        {
+        }
+
+        [Test()]
+        public async Task UploadFileTest_NotThrowException()
+        {
+            //Assume
+            AuthenticationService.Setup(x => x.UserIsAllowedToUploadFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TypeEnum>())).Returns(Task.FromResult(true));
+            FilesService.Setup(x => x.UploadFile(It.IsAny<UploadData>(), It.IsAny<string>())).Returns(Task.FromResult(File));
+
+            //Act
+            var result = (await FilesController.UploadFile(UploadData, SessionId) as ObjectResult);
+
+            //Assume
+            Assert.AreEqual(200, result.StatusCode);
+        }
+
+        [Test()]
+        public async Task UploadFilesTest_ShouldThrow_403()
+        {
+            //Assume
+            AuthenticationService.Setup(x => x.UserIsAllowedToUploadFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TypeEnum>())).Returns(Task.FromResult(false));
+            FilesService.Setup(x => x.UploadFile(It.IsAny<UploadData>(), It.IsAny<string>())).Returns(Task.FromResult(File));
+
+            //Act
+            var result = await FilesController.UploadFile(UploadData, SessionId) as ObjectResult;
+            var customResult = result.Value as Result;
+
+            //Assert
+            Assert.AreEqual(403, result.StatusCode);
+            Assert.AreEqual("ERROR_FORBIDDEN_REQUEST", customResult.ErrorCode);
+        }
+
+        [Test()]
+        public async Task UploadFilesTest_ShouldThrow_400()
+        {
+            //Assume
+            AuthenticationService.Setup(x => x.UserIsAllowedToUploadFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TypeEnum>())).Returns(Task.FromResult(true));
+            FilesService.Setup(x => x.UploadFile(It.IsAny<UploadData>(), It.IsAny<string>())).Throws<InvalidFileException>();
+
+            //Act
+            var result = await FilesController.UploadFile(UploadData, SessionId) as ObjectResult;
+
+            //Assert
+            Assert.AreEqual(400, result.StatusCode);
+        }
+
+        [Test()]
+        public async Task UploadFilesTest_ShouldThrow_500()
+        {
+            //Assume
+            AuthenticationService.Setup(x => x.UserIsAllowedToUploadFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<TypeEnum>())).Returns(Task.FromResult(true));
+            FilesService.Setup(x => x.UploadFile(It.IsAny<UploadData>(), It.IsAny<string>())).Throws<InvalidBase64Exception>();
+
+            //Act
+            var result = await FilesController.UploadFile(UploadData, SessionId) as ObjectResult;
+
+            //Assert
+            Assert.AreEqual(400, result.StatusCode);
+        }
+    }
+}
