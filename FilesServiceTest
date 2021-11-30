@@ -1,0 +1,96 @@
+using AutoFixture;
+using fileuploader_api.Exceptions;
+using fileuploader_api.Models;
+using fileuploaderTest.Helpers;
+using Moq;
+using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace fileuploaderTest.Services
+{
+    //Test guidlines -> Assume,  Act,  Assert.   
+    [TestFixture()]
+    public class FilesServiceTest : FilesServiceTestHelper
+    {
+        public readonly Fixture _fixture = new Fixture();
+
+        [Test()]
+        public async Task UploadFile_WithNoException()
+        {
+            //Assume
+            PrepareUserData();
+            SessionState.Setup(x => x.GetSessionState(SessionId)).Returns(Task.FromResult(SessionStaeObj));
+            CustomersRepository.Setup(x => x.GetCustomer(UploadData.Producer)).Returns(Task.FromResult(CustomarObj));
+            FilesRepository.Setup(x => x.WriteFile(It.IsAny<string>(), CustomarObj, It.IsAny<byte[]>()));
+
+            //Act
+            QCFile file = await FilesServiceObj.UploadFile(UploadData, SessionId);
+
+            //Assert
+            Assert.NotNull(file);
+
+            //Verfify
+            SessionState.Verify(x => x.GetSessionState(SessionId), Times.Once);
+            CustomersRepository.Verify(x => x.GetCustomer(UploadData.Producer), Times.Once);
+            FilesRepository.Verify(x => x.Save(It.IsAny<string>(), CustomarObj, It.IsAny<byte[]>(), It.IsAny<QCFile>()), Times.Once);
+        }
+
+        [Test()]
+        public void UploadFile_ObjectMissingException()
+        {
+            //Assume
+            SessionState.Setup(x => x.GetSessionState(It.IsAny<string>())).Returns(Task.FromResult(SessionStaeObj));
+            CustomersRepository.Setup(x => x.GetCustomer(It.IsAny<string>()));
+            PrepareUserData();
+
+            //Act
+            UploadData.Producer = null;
+
+            //Assert
+            ObjectMissingException ex = Assert.ThrowsAsync<ObjectMissingException>(async () =>
+            {
+                await FilesServiceObj.UploadFile(UploadData, SessionId);
+            });
+
+            Assert.That(ex.Message, Does.StartWith("Could not find customer:"));
+
+            //Verify
+            SessionState.Verify(x => x.GetSessionState(It.IsAny<string>()), Times.Once);
+            CustomersRepository.Verify(x => x.GetCustomer(It.IsAny<string>()), Times.Once);
+        }
+
+        [Test()]
+        public void UploadFile_InvalidBase64Exception()
+        {
+            //Act
+            UploadData.File = _fixture.Create<string>();
+
+            //Assert
+            InvalidBase64Exception ex = Assert.ThrowsAsync<InvalidBase64Exception>(async () =>
+            {
+                await FilesServiceObj.UploadFile(UploadData, SessionId);
+            });
+
+            Assert.That(ex.Message, Does.StartWith("Base64 string is not invalid."));
+        }
+
+        [Test()]
+        public void UploadFile_InvalidFileTypeException()
+        {
+            UploadData.Name = $"{_fixture.Create<string>()}.ps";
+            //Act
+
+            //Assert
+            InvalidFileTypeException ex = Assert.ThrowsAsync<InvalidFileTypeException>(async () =>
+            {
+                await FilesServiceObj.UploadFile(UploadData, SessionId);
+            });
+
+            Assert.That(ex.Message, Does.StartWith("The file type you have chosen is not valid"));
+        }
+    }
+}
