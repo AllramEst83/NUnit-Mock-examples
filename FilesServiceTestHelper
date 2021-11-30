@@ -1,0 +1,91 @@
+using AutoFixture;
+using fileuploader_api.Models;
+using fileuploader_api.Models.Enums;
+using fileuploader_api.Repositories.Customers;
+using fileuploader_api.Repositories.Files;
+using fileuploader_api.Repositories.Sessions;
+using fileuploader_api.Services.Files;
+using fileuploader_api.Singelton.ServiceSettings;
+using Microsoft.Extensions.Logging;
+using Moq;
+using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace fileuploaderTest.Helpers
+{
+    public class FilesServiceTestHelper
+    {
+        public ServiceSettings ServiceSettings { get; set; }
+        public Mock<IFilesRepository> FilesRepository { get; set; }
+        public Mock<ICustomersRepository> CustomersRepository { get; set; }
+        public Mock<ISessionStatesRepository> SessionState { get; set; }
+        public Mock<ILogger<FilesService>> LoggerFilesService { get; set; }
+        public FilesService FilesServiceObj { get; set; }
+
+        public readonly Fixture fixture = new Fixture();
+        public UploadData UploadData { get; set; }
+        public string SessionId { get; set; }
+        public SessionState SessionStaeObj { get; set; }
+        public Customer CustomarObj { get; set; }
+
+        [SetUp]
+        public void SetUp()
+        {
+            SessionState.Invocations.Clear();
+            CustomersRepository.Invocations.Clear();
+            FilesRepository.Invocations.Clear();
+            LoggerFilesService.Invocations.Clear();
+        }
+
+        public FilesServiceTestHelper()
+        {
+            ServiceSettings = new ServiceSettings
+            {
+                AcceptedFileTypes = new List<string>() { ".txt", ".docx" },
+                  UploadedFilesRootUrl = "dev-srv1.quickchannel.com/files"
+            };
+
+            FilesRepository = new Mock<IFilesRepository>();
+            CustomersRepository = new Mock<ICustomersRepository>();
+            SessionState = new Mock<ISessionStatesRepository>();
+            LoggerFilesService = new Mock<ILogger<FilesService>>();
+
+            PrepareUserData();
+
+            SessionId = fixture.Create<string>();
+
+            string date = DateTime.Parse("2021-12-12T10:10:10")
+                    .ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.FFFZ");
+
+            SessionStaeObj = fixture.Build<SessionState>()
+                .With(x => x.SessionLimit, date)
+                .Create();
+
+            CustomarObj = fixture.Build<Customer>()
+                .With(p => p.Producer, "ability65")
+                .Create();
+
+            FilesServiceObj = new FilesService(
+                ServiceSettings,
+                FilesRepository.Object,
+                CustomersRepository.Object,
+                SessionState.Object,
+                LoggerFilesService.Object);
+        }
+
+        public void PrepareUserData()
+        {
+            UploadData = fixture.Build<UploadData>()
+                .With(p => p.File, "dGVzdCB0ZXMgdGVzdA==")
+                .With(p => p.Name, "testFilen.txt")
+                .With(p => p.Size, 13)
+                .With(p => p.Producer, "phcicuh")
+                .With(p => p.Type, TypeEnum.Background)
+                .Create();
+        }
+    }
+}
