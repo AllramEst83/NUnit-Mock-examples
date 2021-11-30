@@ -1,0 +1,53 @@
+using AutoFixture;
+using fileuploader_api.Controllers;
+using fileuploader_api.Models;
+using fileuploader_api.Models.Enums;
+using fileuploader_api.Repositories.Authentication;
+using fileuploader_api.Repositories.Customers;
+using fileuploader_api.Repositories.Files;
+using fileuploader_api.Repositories.Sessions;
+using fileuploader_api.Services.Authentication;
+using fileuploader_api.Services.Files;
+using fileuploader_api.Utilities;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+namespace fileuploaderTest.Helpers
+{
+
+
+    public class FilesControllerTestHelper
+    {
+        public Mock<IFilesService> FilesService { get; set; }
+        public Mock<IAuthenticationService> AuthenticationService { get; set; }
+        public Mock<ILogger<FilesController>> LoggerFileController { get; set; }
+        public FilesController FilesController { get; set; }
+
+        public readonly Fixture fixture = new Fixture();
+        public QCFile File { get; set; }
+        public UploadData UploadData { get; set; }
+        public string SessionId { get; set; }
+        public string Producer_Id { get; set; }
+        public TypeEnum Type { get; set; }
+
+        public FilesControllerTestHelper()
+        {
+            FilesService = new Mock<IFilesService>();
+            AuthenticationService = new Mock<IAuthenticationService>();
+            LoggerFileController = new Mock<ILogger<FilesController>>();
+
+            FilesController = new FilesController(LoggerFileController.Object, FilesService.Object, AuthenticationService.Object);
+
+            fixture.Behaviors.Add(new OmitOnRecursionBehavior());
+
+            File = fixture.Create<QCFile>();
+            UploadData = fixture.Create<UploadData>();
+            SessionId = fixture.Create<string>();
+            Producer_Id = fixture.Create<string>();
+            Type = fixture.Create<TypeEnum>();
+
+
+        }
+    }
+}
